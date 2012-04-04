@@ -30,10 +30,11 @@ module Rack # :nodoc:
     end
 
     def url(env)
-      if (host = host(env))
+      if (hosts = host(env))
+        hosts = [hosts] unless hosts.is_a? Array
         request = Rack::Request.new(env)
-        if request.host != host
-          request.url.sub(%r{\A(https?://)(.*?)(:\d+)?(/|$)}, "\\1#{host}\\3/")
+        unless hosts.include?(request.host)
+          request.url.sub(%r{\A(https?://)(.*?)(:\d+)?(/|$)}, "\\1#{hosts.first}\\3/")
         end
       end
     end

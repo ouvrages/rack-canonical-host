@@ -48,10 +48,41 @@ describe Rack::CanonicalHost do
 
       context 'forwarded' do
         let(:env) { Rack::MockRequest.env_for(requested_uri.path, "HTTP_HOST" => "localhost:81", "HTTP_X_FORWARDED_HOST" => "#{requested_uri.host}") }
-        
         it_should_behave_like "a redirected request"
       end
 
+    end
+    
+    context 'with a secondary hostname' do
+      let(:secondary_hostname) { 'secondary.com' }
+      let(:response) { stack([requested_uri.host, secondary_hostname]).call(env) }
+
+      it_should_behave_like "a non redirected request"
+      
+      context 'forwarded' do
+        let(:env) { Rack::MockRequest.env_for(requested_uri.path, "HTTP_HOST" => "localhost:81", "HTTP_X_FORWARDED_HOST" => "#{requested_uri.host}") }
+        it_should_behave_like "a non redirected request"
+      end
+      
+      context 'on secondary' do
+        let(:requested_uri) { URI.parse("http://#{secondary_hostname}/test/path") }
+        it_should_behave_like "a non redirected request"
+
+        context 'forwarded' do
+          let(:env) { Rack::MockRequest.env_for(requested_uri.path, "HTTP_HOST" => "localhost:81", "HTTP_X_FORWARDED_HOST" => "#{requested_uri.host}") }
+          it_should_behave_like "a non redirected request"
+        end
+      end
+
+      context 'on a non matching host' do
+        let(:response) { stack(['new-host.com', secondary_hostname]).call(env) }
+        it_should_behave_like "a redirected request"
+        
+        context 'forwarded' do
+          let(:env) { Rack::MockRequest.env_for(requested_uri.path, "HTTP_HOST" => "localhost:81", "HTTP_X_FORWARDED_HOST" => "#{requested_uri.host}") }
+          it_should_behave_like "a redirected request"
+        end
+      end
     end
     
     context 'when initialized with a block' do
