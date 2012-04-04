@@ -13,7 +13,7 @@ describe Rack::CanonicalHost do
 
     subject { response }
 
-    context 'with a request to a matching host' do
+    shared_examples "a non redirected request" do
       it { should_not redirect }
 
       it 'calls up the stack with the received env' do
@@ -21,10 +21,8 @@ describe Rack::CanonicalHost do
         subject
       end
     end
-
-    context 'with a request to a non-matching host' do
-      let(:response) { stack('new-host.com').call(env) }
-
+    
+    shared_examples "a redirected request" do
       it { should redirect.via(301) }
       it { should redirect.to('http://new-host.com/test/path') }
 
@@ -33,7 +31,29 @@ describe Rack::CanonicalHost do
         subject
       end
     end
+    
+    context 'with a request to a matching host' do
+      it_should_behave_like "a non redirected request"
 
+      context 'forwarded' do
+        let(:env) { Rack::MockRequest.env_for(requested_uri.path, "HTTP_HOST" => "localhost:81", "HTTP_X_FORWARDED_HOST" => "#{requested_uri.host}") }
+        it_should_behave_like "a non redirected request"
+      end
+    end
+
+    context 'with a request to a non-matching host' do
+      let(:response) { stack('new-host.com').call(env) }
+
+      it_should_behave_like "a redirected request"
+
+      context 'forwarded' do
+        let(:env) { Rack::MockRequest.env_for(requested_uri.path, "HTTP_HOST" => "localhost:81", "HTTP_X_FORWARDED_HOST" => "#{requested_uri.host}") }
+        
+        it_should_behave_like "a redirected request"
+      end
+
+    end
+    
     context 'when initialized with a block' do
       let(:block) { Proc.new { |env| "block-host.com" } }
       let(:response) { stack(&block).call(env) }
