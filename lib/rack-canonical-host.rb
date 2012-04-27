@@ -11,10 +11,11 @@ module Rack # :nodoc:
       </html>
     HTML
 
-    def initialize(app, host=nil, &block)
+    def initialize(app, host=nil, ignored_paths = [], &block)
       @app = app
       @host = host
       @block = block
+      @ignored_paths = ignored_paths
     end
 
     def call(env)
@@ -33,7 +34,7 @@ module Rack # :nodoc:
       if (hosts = host(env))
         hosts = [hosts] unless hosts.is_a? Array
         request = Rack::Request.new(env)
-        unless hosts.include?(request.host)
+        unless hosts.include?(request.host) or @ignored_paths.include?(request.path)
           request.url.sub(%r{\A(https?://)(.*?)(:\d+)?(/|$)}, "\\1#{hosts.first}\\3/")
         end
       end
